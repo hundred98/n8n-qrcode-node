@@ -1,35 +1,114 @@
-# n8n 二维码节点功能方案设计
+# n8n QR Code 节点包
 
 ## 功能概述
 
+这是一个n8n社区节点包，提供完整的二维码生成和解析功能。包含四个主要节点：
+
+- **QR Code Generator** - 二维码生成器
+- **QR Code Reader** - 二维码读取器  
+- **QR Code Credential Manager** - 二维码凭据管理器
+- **QR Code Toolkit** - 二维码工具集
+
 ## 安装说明
 
-### 本地开发安装
+### 方法一：使用N8N_CUSTOM_EXTENSIONS环境变量
 
+1. 确保项目已安装依赖：
 ```bash
-# 克隆仓库
-git clone https://github.com/yourusername/n8n-nodes-qrcode.git
 cd n8n-nodes-qrcode
-
-# 安装依赖
 npm install
-
-# 链接到n8n开发环境
-npm link
-
-# 然后启动n8n
-cd /path/to/n8n
-npm link n8n-nodes-qrcode
-npm run start
 ```
 
-### 直接安装
+2. 启动n8n时设置环境变量：
+```bash
+# Windows PowerShell
+$env:N8N_CUSTOM_EXTENSIONS="E:\code\N8N\NextFlow
+8n-nodes-qrcode"; n8n start
+
+# Linux/Mac
+N8N_CUSTOM_EXTENSIONS="/path/to/n8n-nodes-qrcode" n8n start
+```
+
+### 方法二：直接安装到n8n
 
 ```bash
-# 在n8n目录中安装
+# 在n8n项目目录中
 cd /path/to/n8n
 npm install /path/to/n8n-nodes-qrcode
 ```
+
+## 节点功能详情
+
+### 1. QR Code Generator (二维码生成器)
+
+**功能**：将文本、URL或JSON数据转换为二维码
+
+**输入参数**：
+- **Text**：要编码的文本内容
+- **Output Format**：输出格式（PNG Base64 或 SVG）
+- **Size**：二维码尺寸（32-2048像素）
+
+**输出**：包含二维码数据的JSON对象
+
+### 2. QR Code Reader (二维码读取器)
+
+**功能**：从图像中读取和解析二维码内容
+
+**输入参数**：
+- **Input Source**：输入源类型（文件路径、URL、Base64、文本）
+- **Output Format**：输出格式（原始文本或JSON）
+- **Advanced Options**：高级选项（最大宽度/高度等）
+
+**输出**：解析后的二维码内容及相关元数据
+
+### 3. QR Code Credential Manager (二维码凭据管理器)
+
+**功能**：解析包含凭据信息的二维码并处理凭据数据
+
+**输入参数**：
+- **Input Source**：输入源类型
+- **Credential Handling**：凭据处理选项（类型、格式等）
+- **Advanced Options**：高级安全选项
+
+**输出**：处理后的凭据数据和验证信息
+
+### 4. QR Code Toolkit (二维码工具集)
+
+**功能**：提供二维码相关操作的统一入口
+
+**输入参数**：
+- **Operation**：选择要执行的操作（生成、读取、凭据管理）
+
+## 使用示例
+
+### 生成二维码
+
+1. 添加 "QR Code Generator" 节点
+2. 在 "Text" 字段输入要编码的内容
+3. 选择输出格式和尺寸
+4. 执行工作流，获取生成的二维码数据
+
+### 读取二维码
+
+1. 添加 "QR Code Reader" 节点
+2. 选择输入源类型
+3. 提供二维码图像路径或数据
+4. 执行工作流，获取解析结果
+
+## 技术依赖
+
+- `qrcode` - 二维码生成
+- `jsqr` - 二维码解析  
+- `sharp` - 图像处理
+- `n8n-workflow` - n8n工作流集成
+
+## 开发说明
+
+项目使用标准的n8n节点开发规范：
+- 所有节点都继承自n8n-workflow基类
+- 使用构造函数初始化节点描述
+- 支持错误处理和继续执行选项
+- 符合n8n节点API版本1规范
 
 ## 功能概述
 
