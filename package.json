@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "n8n community node for QR code generation and reading",
   "keywords": [
-    "n8n-community-node-package"
+    "n8n-nodes",
+    "n8n-community-node-package",
+    "qrcode",
+    "n8n"
   ],
   "license": "MIT",
   "homepage": "",
@@ -19,19 +22,27 @@
     "node": ">=14.0.0"
   },
   "main": "index.js",
+  "files": [
+    "index.js",
+    "nodes/",
+    "package.json"
+  ],
   "scripts": {
     "build": "echo 'Building package...'",
     "test": "echo 'Running tests...'"
   },
+  "n8n": {
+    "n8nNodesApiVersion": 2,
+    "nodes": [
+      "nodes/QRCode/QRCode.node.js"
+    ]
+  },
   "devDependencies": {
-    "eslint": "^7.32.0",
-    "eslint-plugin-n8n-nodes-base": "^1.5.0",
     "n8n-workflow": "^1.29.0"
   },
   "dependencies": {
-    "jsqr": "^1.4.0",
     "qrcode": "^1.5.1",
-    "sharp": "^0.30.7",
-    "axios": "^0.27.2"
+    "jsqr": "^1.4.0",
+    "sharp": "^0.32.0"
   }
 }
