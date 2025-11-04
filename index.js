@@ -1,5 +1,7 @@
-const QRCodeNode = require('./nodes/QRCode/QRCode.node.js').node;
+const { QRCode } = require('./nodes/QRCode/QRCode.node.js');
+const { QRCodeApi } = require('./nodes/QRCode/QRCode.credentials.js');
 
 module.exports = {
-    nodes: [QRCodeNode]
+	nodes: [QRCode],
+	credentials: [QRCodeApi]
 };

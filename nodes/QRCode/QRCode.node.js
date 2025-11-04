@@ -1,176 +1,360 @@
 const { INodeType, INodeTypeDescription } = require('n8n-workflow');
 const QRCode = require('qrcode');
+const jsQR = require('jsqr');
+const sharp = require('sharp');
 
 class QRCodeNode {
-    constructor() {}
-    
-    description = {
-        displayName: 'QR Code',
-        name: 'qrcode',
-        icon: 'file:qrcode.svg',
-        group: ['transform'],
-        version: 1,
-        description: 'Generate and read QR codes with various options',
-        defaults: {
-            name: 'QR Code'
-        },
-        inputs: ['main'],
-        outputs: ['main'],
-        properties: [
-            {
-                displayName: 'Operation',
-                name: 'operation',
-                type: 'options',
-                options: [
-                    {
-                        name: 'Generate QR Code',
-                        value: 'generate',
-                        description: 'Generate a QR code from text or data'
-                    },
-                    {
-                        name: 'Read QR Code',
-                        value: 'read',
-                        description: 'Read and decode QR code from image'
-                    },
-                    {
-                        name: 'Manage Credentials',
-                        value: 'credentials',
-                        description: 'Manage QR code credentials'
-                    }
-                ],
-                default: 'generate',
-                description: 'Select the QR code operation'
-            },
-            {
-                displayName: 'Input Type',
-                name: 'inputType',
-                type: 'options',
-                options: [
-                    { name: 'Text', value: 'text' },
-                    { name: 'JSON', value: 'json' }
-                ],
-                default: 'text',
-                displayOptions: {
-                    show: {
-                        operation: ['generate']
-                    }
-                },
-                description: 'Choose the type of input data'
-            },
-            {
-                displayName: 'Text',
-                name: 'text',
-                type: 'string',
-                typeOptions: {
-                    rows: 4
-                },
-                required: true,
-                default: '',
-                displayOptions: {
-                    show: {
-                        operation: ['generate'],
-                        inputType: ['text']
-                    }
-                },
-                description: 'The text or URL to encode in the QR code'
-            },
-            {
-                displayName: 'JSON Data',
-                name: 'jsonData',
-                type: 'json',
-                required: true,
-                default: {},
-                displayOptions: {
-                    show: {
-                        operation: ['generate'],
-                        inputType: ['json']
-                    }
-                },
-                description: 'The JSON data to encode in the QR code'
-            },
-            {
-                displayName: 'Output Format',
-                name: 'outputFormat',
-                type: 'options',
-                options: [
-                    { name: 'PNG', value: 'png' },
-                    { name: 'SVG', value: 'svg' },
-                    { name: 'Base64', value: 'base64' }
-                ],
-                default: 'png',
-                displayOptions: {
-                    show: {
-                        operation: ['generate']
-                    }
-                },
-                description: 'Choose the output format for the QR code'
-            },
-            {
-                displayName: 'Size',
-                name: 'size',
-                type: 'number',
-                default: 256,
-                displayOptions: {
-                    show: {
-                        operation: ['generate']
-                    }
-                },
-                description: 'Size of the QR code in pixels',
-                minValue: 32,
-                maxValue: 2048
-            }
-        ]
-    };
+	constructor() {
+		this.description = {
+			displayName: 'QR Code',
+			name: 'qrcode',
+			icon: 'file:qrcode.svg',
+			group: ['transform'],
+			version: 1,
+			description: 'Generate and read QR codes with various options',
+			defaults: {
+				name: 'QR Code'
+			},
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [
+				{
+					name: 'qrcodeApi',
+					required: true,
+				},
+			],
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{
+							name: 'Generate QR Code',
+							value: 'generate',
+							description: 'Generate a QR code from text or data'
+						},
+						{
+							name: 'Read QR Code',
+							value: 'read',
+							description: 'Read and decode QR code from image'
+						},
+						{
+							name: 'Manage Credentials',
+							value: 'credentials',
+							description: 'Manage QR code credentials'
+						}
+					],
+					default: 'generate',
+					description: 'Select the QR code operation'
+				},
+				// Generate QR Code 参数
+				{
+					displayName: 'Input Type',
+					name: 'inputType',
+					type: 'options',
+					options: [
+						{ name: 'Text', value: 'text' },
+						{ name: 'JSON', value: 'json' }
+					],
+					default: 'text',
+					displayOptions: {
+						show: {
+							operation: ['generate']
+						}
+					},
+					description: 'Choose the type of input data'
+				},
+				{
+					displayName: 'Text',
+					name: 'text',
+					type: 'string',
+					typeOptions: {
+						rows: 4
+					},
+					required: true,
+					default: '',
+					displayOptions: {
+						show: {
+							operation: ['generate'],
+							inputType: ['text']
+						}
+					},
+					description: 'The text or URL to encode in the QR code'
+				},
+				{
+					displayName: 'JSON Data',
+					name: 'jsonData',
+					type: 'json',
+					required: true,
+					default: {},
+					displayOptions: {
+						show: {
+							operation: ['generate'],
+							inputType: ['json']
+						}
+					},
+					description: 'The JSON data to encode in the QR code'
+				},
+				{
+					displayName: 'Output Format',
+					name: 'outputFormat',
+					type: 'options',
+					options: [
+						{ name: 'PNG', value: 'png' },
+						{ name: 'SVG', value: 'svg' },
+						{ name: 'Base64', value: 'base64' }
+					],
+					default: 'png',
+					displayOptions: {
+						show: {
+							operation: ['generate']
+						}
+					},
+					description: 'Choose the output format for the QR code'
+				},
+				{
+					displayName: 'Size',
+					name: 'size',
+					type: 'number',
+					default: 256,
+					displayOptions: {
+						show: {
+							operation: ['generate']
+						}
+					},
+					description: 'Size of the QR code in pixels',
+					minValue: 32,
+					maxValue: 2048
+				},
+				// Read QR Code 参数
+				{
+					displayName: 'Image Data',
+					name: 'imageData',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: {
+						show: {
+							operation: ['read']
+						}
+					},
+					description: 'Base64 encoded image data to read QR code from'
+				},
+				{
+					displayName: 'Image Format',
+					name: 'imageFormat',
+					type: 'options',
+					options: [
+						{ name: 'PNG', value: 'png' },
+						{ name: 'JPEG', value: 'jpeg' },
+						{ name: 'WebP', value: 'webp' }
+					],
+					default: 'png',
+					displayOptions: {
+						show: {
+							operation: ['read']
+						}
+					},
+					description: 'Format of the input image'
+				},
+				// Manage Credentials 参数
+				{
+					displayName: 'Credential Action',
+					name: 'credAction',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Delete', value: 'delete' },
+						{ name: 'List', value: 'list' }
+					],
+					default: 'list',
+					displayOptions: {
+						show: {
+							operation: ['credentials']
+						}
+					},
+					description: 'Action to perform on credentials'
+				},
+				{
+					displayName: 'Credential Name',
+					name: 'credName',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							credAction: ['list']
+						},
+						show: {
+							operation: ['credentials']
+						}
+					},
+					description: 'Name of the credential'
+				},
+				{
+					displayName: 'Credential Value',
+					name: 'credValue',
+					type: 'string',
+					typeOptions: {
+						password: true
+					},
+					default: '',
+					displayOptions: {
+						hide: {
+							credAction: ['list', 'delete']
+						},
+						show: {
+							operation: ['credentials']
+						}
+					},
+					description: 'Value of the credential'
+				},
+				{
+					displayName: 'Data Table ID',
+					name: 'dataTableId',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							operation: ['credentials']
+						}
+					},
+					description: 'ID of the n8n data table to use for credential storage'
+				}
+			]
+		};
+	}
 
-    async execute() {
-        const items = this.getInputData();
-        const operation = this.getNodeParameter('operation', 0);
+	async execute() {
+		const items = this.getInputData();
+		const operation = this.getNodeParameter('operation', 0);
+		
+		// 获取凭证信息
+		const credentials = await this.getCredentials('qrcodeApi');
+		
+		const returnItems = [];
+		
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i];
+			
+			if (operation === 'generate') {
+				const inputType = this.getNodeParameter('inputType', i);
+				const outputFormat = this.getNodeParameter('outputFormat', i);
+				const size = this.getNodeParameter('size', i);
+				
+				let data;
+				if (inputType === 'text') {
+					data = this.getNodeParameter('text', i);
+				} else {
+					data = JSON.stringify(this.getNodeParameter('jsonData', i));
+				}
 
-        for (let i = 0; i < items.length; i++) {
-            const item = items[i];
-            
-            if (operation === 'generate') {
-                const inputType = this.getNodeParameter('inputType', i);
-                const outputFormat = this.getNodeParameter('outputFormat', i);
-                const size = this.getNodeParameter('size', i);
-                
-                let data;
-                if (inputType === 'text') {
-                    data = this.getNodeParameter('text', i);
-                } else {
-                    data = JSON.stringify(this.getNodeParameter('jsonData', i));
-                }
+				try {
+					const options = {
+						width: size,
+						height: size
+					};
 
-                try {
-                    const options = {
-                        width: size,
-                        height: size
-                    };
+					let qrCode;
+					if (outputFormat === 'png') {
+						qrCode = await QRCode.toDataURL(data, options);
+					} else if (outputFormat === 'svg') {
+						qrCode = await QRCode.toString(data, { type: 'svg', ...options });
+					} else {
+						qrCode = await QRCode.toDataURL(data, options);
+					}
 
-                    let qrCode;
-                    if (outputFormat === 'png') {
-                        qrCode = await QRCode.toDataURL(data, options);
-                    } else if (outputFormat === 'svg') {
-                        qrCode = await QRCode.toString(data, { type: 'svg', ...options });
-                    } else {
-                        qrCode = await QRCode.toDataURL(data, options);
-                    }
+					returnItems.push({
+						json: {
+							qrCode: qrCode,
+							format: outputFormat,
+							size: size,
+							data: data
+						}
+					});
 
-                    item.json.qrCode = qrCode;
-                    item.json.format = outputFormat;
-                    item.json.size = size;
-                    item.json.data = data;
+				} catch (error) {
+					throw new Error(`Failed to generate QR code: ${error.message}`);
+				}
+			} else if (operation === 'read') {
+				const imageData = this.getNodeParameter('imageData', i);
+				const imageFormat = this.getNodeParameter('imageFormat', i);
+				
+				try {
+					// 移除可能的数据URI前缀
+					let base64Data = imageData;
+					if (imageData.startsWith('data:image')) {
+						base64Data = imageData.split(',')[1];
+					}
+					
+					// 将base64转换为buffer
+					const imageBuffer = Buffer.from(base64Data, 'base64');
+					
+					// 使用sharp处理图像
+					const { data, info } = await sharp(imageBuffer)
+						.raw()
+						.ensureAlpha()
+						.toBuffer({ resolveWithObject: true });
+						
+					// 使用jsQR读取二维码
+					const code = jsQR(data, info.width, info.height);
+					
+					if (code) {
+						returnItems.push({
+							json: {
+								success: true,
+								data: code.data,
+								binaryData: code.binaryData,
+								location: {
+									top: code.location.topLeftCorner.y,
+									right: code.location.topRightCorner.x,
+									bottom: code.location.bottomLeftCorner.y,
+									left: code.location.topLeftCorner.x
+								}
+							}
+						});
+					} else {
+						returnItems.push({
+							json: {
+								success: false,
+								error: 'No QR code found in image'
+							}
+						});
+					}
+				} catch (error) {
+					throw new Error(`Failed to read QR code: ${error.message}`);
+				}
+			} else if (operation === 'credentials') {
+				// 准备与n8n data table集成
+				// 这里需要通过HTTP请求与data table API交互
+				const credAction = this.getNodeParameter('credAction', i);
+				const dataTableId = this.getNodeParameter('dataTableId', i);
+				
+				if (!dataTableId) {
+					throw new Error('Data Table ID is required for credential management');
+				}
+				
+				// 提供与data table集成的指引信息
+				returnItems.push({
+					json: {
+						action: credAction,
+						dataTableId: dataTableId,
+						message: `To manage credentials, connect this node to an HTTP Request node configured to interact with n8n data table API.`,
+						instructions: {
+							create: "Use POST request to data table API with credential name and value",
+							delete: "Use DELETE request to data table API with credential name",
+							list: "Use GET request to data table API to retrieve all credentials"
+						},
+						timestamp: new Date().toISOString()
+					}
+				});
+			}
+		}
 
-                } catch (error) {
-                    throw new Error(`Failed to generate QR code: ${error.message}`);
-                }
-            }
-        }
-
-        return this.prepareOutputData(items);
-    }
+		return this.prepareOutputData(returnItems);
+	}
 }
 
 module.exports = {
-    node: QRCodeNode
+	QRCode: QRCodeNode
 };

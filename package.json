@@ -34,7 +34,10 @@
   "n8n": {
     "n8nNodesApiVersion": 2,
     "nodes": [
-      "nodes/QRCode/QRCode.node.js"
+      "dist/nodes/QRCode/QRCode.node.js"
+    ],
+    "credentials": [
+      "dist/nodes/QRCode/QRCode.credentials.js"
     ]
   },
   "devDependencies": {
