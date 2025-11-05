@@ -204,24 +204,7 @@ class QRCodeNode {
 					},
 					description: 'URL of the image containing the QR code'
 				},
-				// App Secrets Management 参数
-				{
-					displayName: 'App Secret Action',
-					name: 'secretAction',
-					type: 'options',
-					options: [
-						{ name: 'Create', value: 'create' },
-						{ name: 'Delete', value: 'delete' },
-						{ name: 'List', value: 'list' }
-					],
-					default: 'list',
-					displayOptions: {
-						show: {
-							operation: ['appSecrets']
-						}
-					},
-					description: 'Action to perform on application secrets'
-				},
+				// App Secrets Management Parameters
 				{
 					displayName: 'Data Table',
 					name: 'dataTableId',
@@ -255,39 +238,78 @@ class QRCodeNode {
 					description: 'Data table to use for application secret storage'
 				},
 				{
-					displayName: 'App Secret Name',
-					name: 'secretName',
-					type: 'string',
-					default: '',
+					displayName: 'Data Source',
+					name: 'dataSource',
+					type: 'options',
+					options: [
+						{ name: 'Binary Field', value: 'binaryField' },
+						{ name: 'URL', value: 'url' }
+					],
+					default: 'binaryField',
 					displayOptions: {
-						hide: {
-							secretAction: ['list']
-						},
 						show: {
 							operation: ['appSecrets']
 						}
 					},
-					description: 'Name of the application secret'
+					description: 'Select the source of the QR code image containing app secret data'
 				},
 				{
-					displayName: 'App Secret Value',
-					name: 'secretValue',
+					displayName: 'Input Binary Field Name',
+					name: 'inputBinaryField',
 					type: 'string',
-					typeOptions: {
-						password: true
-					},
-					default: '',
+					required: true,
+					default: 'data',
 					displayOptions: {
-						hide: {
-							secretAction: ['list', 'delete']
-						},
 						show: {
-							operation: ['appSecrets']
+							operation: ['appSecrets'],
+							dataSource: ['binaryField']
 						}
 					},
-					description: 'Value of the application secret'
+					description: 'Name of the binary field containing the QR code image with app secret data'
+				},
+				{
+					displayName: 'Image URL',
+					name: 'imageUrl',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: {
+						show: {
+							operation: ['appSecrets'],
+							dataSource: ['url']
+						}
+					},
+					description: 'URL of the QR code image containing app secret data'
 				}
 			]
+		};
+
+		this.methods = {
+			listSearch: {
+				async dataTableSearch(opts) {
+					// 返回预定义的静态列表
+					// 在实际应用中，这里应该连接到n8n的数据表API来获取真实数据
+					const results = [
+						{
+							name: 'App Secrets',
+							value: 'app_secrets'
+						},
+						{
+							name: 'Credentials Storage',
+							value: 'credentials_storage'
+						}
+					];
+					
+					// 如果有搜索过滤器，则根据名称过滤结果
+					if (opts && opts.filter) {
+						return results.filter(item => 
+							item.name.toLowerCase().includes(opts.filter.toLowerCase())
+						);
+					}
+					
+					return results;
+				}
+			}
 		};
 	}
 
@@ -475,104 +497,112 @@ class QRCodeNode {
 				}
 			} else if (operation === 'appSecrets') {
 				// 准备与n8n data table集成
-				const secretAction = this.getNodeParameter('secretAction', i);
 				const dataTableId = this.getNodeParameter('dataTableId', i);
+				const dataSource = this.getNodeParameter('dataSource', i);
 				
 				// 尝试获取API Key凭证
 				let credentials;
-					let apiKey;
-					try {
-						credentials = await this.getCredentials('n8nApi');
-						if (credentials) {
-							apiKey = credentials.apiKey;
-						}
-					} catch (error) {
-						// 如果没有设置API Key凭证，继续执行但不使用认证
+				let apiKey;
+				try {
+					credentials = await this.getCredentials('apiKey');
+					if (credentials) {
+						apiKey = credentials.apiKey;
 					}
+				} catch (error) {
+					// 如果没有设置API Key凭证，继续执行但不使用认证
+				}
 				
 				if (!dataTableId) {
 					throw new Error('Data Table ID is required for application secret management');
 				}
 				
-				// 根据不同操作处理应用秘钥
-				if (secretAction === 'create') {
-					const secretName = this.getNodeParameter('secretName', i);
-					const secretValue = this.getNodeParameter('secretValue', i);
-
-					if (!secretName || !secretValue) {
-						throw new Error('Secret Name and Secret Value are required for create operation');
+				// 根据数据源获取图像数据
+				let imageBuffer = null;
+				
+				if (dataSource === 'binaryField') {
+					// 从Binary Field获取数据
+					const inputBinaryField = this.getNodeParameter('inputBinaryField', i);
+					if (item.binary && item.binary[inputBinaryField]) {
+						let base64Data = item.binary[inputBinaryField].data;
+						
+						// 移除可能的数据URI前缀
+						if (base64Data.startsWith('data:image')) {
+							base64Data = base64Data.split(',')[1];
+						}
+						
+						// 将base64转换为buffer
+						imageBuffer = Buffer.from(base64Data, 'base64');
+					} else {
+						throw new Error(`Binary field '${inputBinaryField}' not found in input data`);
 					}
-
-					// 创建应用秘钥对象
-					const secretData = {
-						name: secretName,
-						value: secretValue,
-						type: 'app_secret',
-						createdAt: new Date().toISOString(),
-						updatedAt: new Date().toISOString()
-					};
-					// 返回创建应用秘钥的请求信息
+				} else if (dataSource === 'url') {
+					// 从URL获取数据
+					const imageUrl = this.getNodeParameter('imageUrl', i);
+					// 使用Promise封装HTTP请求
+					imageBuffer = await new Promise((resolve, reject) => {
+						const client = imageUrl.startsWith('https') ? https : http;
+						client.get(imageUrl, (res) => {
+							if (res.statusCode !== 200) {
+								reject(new Error(`Failed to fetch image from URL: Status code ${res.statusCode}`));
+								return;
+							}
+							
+							const chunks = [];
+							res.on('data', (chunk) => chunks.push(chunk));
+							res.on('end', () => resolve(Buffer.concat(chunks)));
+							res.on('error', reject);
+						}).on('error', (err) => {
+							reject(new Error(`Failed to fetch image from URL: ${err.message}`));
+						});
+					});
+				}
+				
+				// 使用sharp处理图像
+				const { data, info } = await sharp(imageBuffer)
+					.raw()
+					.ensureAlpha()
+					.toBuffer({ resolveWithObject: true });
+					
+				// 使用jsQR读取二维码
+				const code = jsQR(data, info.width, info.height);
+				
+				if (code) {
+					// 解析二维码中的应用秘钥数据
+					let secretData;
+					try {
+						secretData = JSON.parse(code.data);
+					} catch (parseError) {
+						throw new Error(`Failed to parse QR code data as JSON: ${parseError.message}`);
+					}
+					
+					// 验证必需的字段
+					if (!secretData.type || secretData.type !== 'n8n-app-secret') {
+						throw new Error('QR code does not contain valid n8n app secret data');
+					}
+					
+					if (!secretData.appName || !secretData.secretName || !secretData.secretValue) {
+						throw new Error('QR code missing required app secret fields');
+					}
+					
+					// 返回解析的应用秘钥信息
 					returnItems.push({
 						json: {
 							action: 'create',
-							secretName: secretName,
+							appName: secretData.appName,
+							secretName: secretData.secretName,
 							secretData: secretData,
-							note: '待实现：通过n8n data table API存储应用秘钥',
-							credentials: apiKey ? 'API Key认证已配置' : '未配置API Key认证'
+							note: '通过n8n data table API存储应用秘钥',
+							credentials: credentials ? 'API Key认证已配置' : '未配置API Key认证'
 						}
 					});
-
-				} else if (secretAction === 'delete') {
-					const secretName = this.getNodeParameter('secretName', i);
-
-					if (!secretName) {
-						throw new Error('Secret Name is required for delete operation');
-					}
-
-					// 返回删除应用秘钥的请求信息
-					returnItems.push({
-						json: {
-							action: 'delete',
-							secretName: secretName,
-							note: '待实现：通过n8n data table API删除应用秘钥',
-							credentials: apiKey ? 'API Key认证已配置' : '未配置API Key认证'
-						}
-					});
-
-				} else if (secretAction === 'list') {
-					// 返回列出应用秘钥的请求信息
-					returnItems.push({
-						json: {
-							action: 'list',
-							note: '待实现：通过n8n data table API列出应用秘钥',
-							credentials: apiKey ? 'API Key认证已配置' : '未配置API Key认证'
-						}
-					});
+				} else {
+					throw new Error('No QR code found in image');
 				}
 			}
 		}
 
 		return this.prepareOutputData(returnItems);
 	}
-	
-	methods = {
-		listSearch: {
-			async dataTableSearch(filter) {
-				// 返回一个空数组，避免出现"Cannot read properties of undefined"错误
-				// 在实际应用中，这里应该连接到n8n的数据表API来获取真实数据
-				return [
-					{
-						name: 'App Secrets',
-						value: 'app_secrets'
-					},
-					{
-						name: 'Credentials Storage',
-						value: 'credentials_storage'
-					}
-				];
-			}
-		}
-	};
 }
 
 module.exports = { QRCode: QRCodeNode };
