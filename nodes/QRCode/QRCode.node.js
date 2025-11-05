@@ -2,6 +2,11 @@ const { INodeType, INodeTypeDescription } = require('n8n-workflow');
 const QRCode = require('qrcode');
 const jsQR = require('jsqr');
 const sharp = require('sharp');
+const https = require('https');
+const http = require('http');
+
+
+
 
 class QRCodeNode {
 	constructor() {
@@ -80,8 +85,13 @@ class QRCodeNode {
 					displayName: 'JSON Data',
 					name: 'jsonData',
 					type: 'json',
+					typeOptions: {
+						editor: 'code',
+						language: 'json',
+						rows: 6
+					},
 					required: true,
-					default: {},
+					default: '{}',
 					displayOptions: {
 						show: {
 							operation: ['generate'],
@@ -90,14 +100,15 @@ class QRCodeNode {
 					},
 					description: 'The JSON data to encode in the QR code'
 				},
+
 				{
 					displayName: 'Output Format',
 					name: 'outputFormat',
 					type: 'options',
 					options: [
 						{ name: 'PNG', value: 'png' },
-						{ name: 'SVG', value: 'svg' },
-						{ name: 'Base64', value: 'base64' }
+						{ name: 'JPG', value: 'jpg' },
+						{ name: 'SVG', value: 'svg' }
 					],
 					default: 'png',
 					displayOptions: {
@@ -105,7 +116,7 @@ class QRCodeNode {
 							operation: ['generate']
 						}
 					},
-					description: 'Choose the output format for the QR code'
+					description: 'Choose the output format for the barcode'
 				},
 				{
 					displayName: 'Size',
@@ -121,36 +132,68 @@ class QRCodeNode {
 					minValue: 32,
 					maxValue: 2048
 				},
+				{
+					displayName: 'Error Correction Level',
+					name: 'errorCorrectionLevel',
+					type: 'options',
+					options: [
+						{ name: 'L (Low - 7%)', value: 'L', description: 'Low error correction (7% of codewords can be restored)' },
+						{ name: 'M (Medium - 15%)', value: 'M', description: 'Medium error correction (15% of codewords can be restored)' },
+						{ name: 'Q (Quartile - 25%)', value: 'Q', description: 'Quartile error correction (25% of codewords can be restored)' },
+						{ name: 'H (High - 30%)', value: 'H', description: 'High error correction (30% of codewords can be restored)' }
+					],
+					default: 'M',
+					displayOptions: {
+						show: {
+							operation: ['generate']
+						}
+					},
+					description: 'Amount of redundancy built into the QR code for error correction'
+				},
 				// Read QR Code 参数
 				{
-					displayName: 'Image Data',
-					name: 'imageData',
+					displayName: 'Data Source',
+					name: 'dataSource',
+					type: 'options',
+					options: [
+						{ name: 'Binary Field', value: 'binaryField' },
+						{ name: 'URL', value: 'url' }
+					],
+					default: 'binaryField',
+					displayOptions: {
+						show: {
+							operation: ['read']
+						}
+					},
+					description: 'Select the source of the QR code image'
+				},
+				{
+					displayName: 'Input Binary Field Name',
+					name: 'inputBinaryField',
+					type: 'string',
+					required: true,
+					default: 'data',
+					displayOptions: {
+						show: {
+							operation: ['read'],
+							dataSource: ['binaryField']
+						}
+					},
+					description: 'Name of the binary field containing the input image'
+				},
+				{
+					displayName: 'Image URL',
+					name: 'imageUrl',
 					type: 'string',
 					required: true,
 					default: '',
 					displayOptions: {
 						show: {
-							operation: ['read']
+							operation: ['read'],
+							dataSource: ['url']
 						}
 					},
-					description: 'Base64 encoded image data to read QR code from'
-				},
-				{
-					displayName: 'Image Format',
-					name: 'imageFormat',
-					type: 'options',
-					options: [
-						{ name: 'PNG', value: 'png' },
-						{ name: 'JPEG', value: 'jpeg' },
-						{ name: 'WebP', value: 'webp' }
-					],
-					default: 'png',
-					displayOptions: {
-						show: {
-							operation: ['read']
-						}
-					},
-					description: 'Format of the input image'
+					description: 'URL of the image containing the QR code'
 				},
 				// App Secrets Management 参数
 				{
@@ -229,9 +272,11 @@ class QRCodeNode {
 			const item = items[i];
 			
 			if (operation === 'generate') {
-				const inputType = this.getNodeParameter('inputType', i);
-				const outputFormat = this.getNodeParameter('outputFormat', i);
-				const size = this.getNodeParameter('size', i);
+					const inputType = this.getNodeParameter('inputType', i);
+					const outputFormat = this.getNodeParameter('outputFormat', i);
+					const size = this.getNodeParameter('size', i);
+					const errorCorrectionLevel = this.getNodeParameter('errorCorrectionLevel', i, 'M');
+
 				
 				let data;
 				if (inputType === 'text') {
@@ -241,45 +286,136 @@ class QRCodeNode {
 				}
 
 				try {
+					let binaryData;
+					let mimeType;
+
+					// 默认使用QRCode库生成QR码
 					const options = {
 						width: size,
-						height: size
+						height: size,
+						errorCorrectionLevel: errorCorrectionLevel
 					};
 
-					let qrCode;
-					if (outputFormat === 'png') {
-						qrCode = await QRCode.toDataURL(data, options);
+					if (outputFormat === 'png' || outputFormat === 'jpg') {
+						// 生成Buffer格式数据
+						binaryData = await QRCode.toBuffer(data, {
+							...options,
+							type: outputFormat
+						});
+						mimeType = outputFormat === 'png' ? 'image/png' : 'image/jpeg';
 					} else if (outputFormat === 'svg') {
-						qrCode = await QRCode.toString(data, { type: 'svg', ...options });
-					} else {
-						qrCode = await QRCode.toDataURL(data, options);
+						// SVG格式作为字符串
+						const svgString = await QRCode.toString(data, { type: 'svg', ...options });
+						binaryData = Buffer.from(svgString);
+						mimeType = 'image/svg+xml';
 					}
 
-					returnItems.push({
+					// 创建二进制输出项
+					const binaryPropertyName = 'barcode';
+					const binaryItem = {
 						json: {
-							qrCode: qrCode,
 							format: outputFormat,
+							codeType: 'qrcode',
 							size: size,
 							data: data
+						},
+						binary: {}
+					};
+					
+					// 生成文件名
+					function generateFileName(extension) {
+						const part1 = generateRandomString(13, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+						const part2 = generateRandomString(14, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789');
+						return `${part1}-${part2}.${extension}`;
+					}
+
+					function generateRandomString(length, chars) {
+						let result = '';
+						for (let i = 0; i < length; i++) {
+							result += chars.charAt(Math.floor(Math.random() * chars.length));
 						}
-					});
+						return result;
+					}
+
+					// 计算文件大小信息
+					let fileSize;
+					const bytes = binaryData.length;
+					if (bytes < 1024) {
+						fileSize = `${bytes} bytes`;
+					} else if (bytes < 1024 * 1024) {
+						fileSize = `${(bytes / 1024).toFixed(2)} KB`;
+					} else {
+						fileSize = `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+					}
+
+					// 获取文件扩展名
+					let fileExtension;
+					if (outputFormat === 'jpg') {
+						fileExtension = 'jpg';
+					} else if (outputFormat === 'svg') {
+						fileExtension = 'svg';
+					} else {
+						fileExtension = 'png';
+					}
+
+					// 设置二进制数据，按照n8n标准格式
+					binaryItem.binary[binaryPropertyName] = {
+						data: binaryData.toString('base64'), // 转换为base64字符串
+						mimeType: mimeType,
+						fileName: generateFileName(fileExtension),
+						fileExtension: fileExtension,
+						fileSize: fileSize
+					};
+
+					returnItems.push(binaryItem);
 
 				} catch (error) {
 					throw new Error(`Failed to generate QR code: ${error.message}`);
 				}
 			} else if (operation === 'read') {
-				const imageData = this.getNodeParameter('imageData', i);
-				const imageFormat = this.getNodeParameter('imageFormat', i);
+				const dataSource = this.getNodeParameter('dataSource', i);
 				
 				try {
-					// 移除可能的数据URI前缀
-					let base64Data = imageData;
-					if (imageData.startsWith('data:image')) {
-						base64Data = imageData.split(',')[1];
-					}
+					// 根据数据源获取图像数据
+					let imageBuffer = null;
 					
-					// 将base64转换为buffer
-					const imageBuffer = Buffer.from(base64Data, 'base64');
+					if (dataSource === 'binaryField') {
+						// 从Binary Field获取数据
+						const inputBinaryField = this.getNodeParameter('inputBinaryField', i);
+						if (item.binary && item.binary[inputBinaryField]) {
+							let base64Data = item.binary[inputBinaryField].data;
+							
+							// 移除可能的数据URI前缀
+							if (base64Data.startsWith('data:image')) {
+								base64Data = base64Data.split(',')[1];
+							}
+							
+							// 将base64转换为buffer
+							imageBuffer = Buffer.from(base64Data, 'base64');
+						} else {
+							throw new Error(`Binary field '${inputBinaryField}' not found in input data`);
+						}
+					} else if (dataSource === 'url') {
+					// 从URL获取数据
+					const imageUrl = this.getNodeParameter('imageUrl', i);
+					// 使用Promise封装HTTP请求
+					imageBuffer = await new Promise((resolve, reject) => {
+						const client = imageUrl.startsWith('https') ? https : http;
+						client.get(imageUrl, (res) => {
+							if (res.statusCode !== 200) {
+								reject(new Error(`Failed to fetch image from URL: Status code ${res.statusCode}`));
+								return;
+							}
+							
+							const chunks = [];
+							res.on('data', (chunk) => chunks.push(chunk));
+							res.on('end', () => resolve(Buffer.concat(chunks)));
+							res.on('error', reject);
+						}).on('error', (err) => {
+							reject(new Error(`Failed to fetch image from URL: ${err.message}`));
+						});
+					});
+				}
 					
 					// 使用sharp处理图像
 					const { data, info } = await sharp(imageBuffer)
@@ -294,14 +430,7 @@ class QRCodeNode {
 						returnItems.push({
 							json: {
 								success: true,
-								data: code.data,
-								binaryData: code.binaryData,
-								location: {
-									top: code.location.topLeftCorner.y,
-									right: code.location.topRightCorner.x,
-									bottom: code.location.bottomLeftCorner.y,
-									left: code.location.topLeftCorner.x
-								}
+								data: code.data
 							}
 						});
 					} else {
