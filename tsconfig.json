@@ -29,7 +29,7 @@
   },
   "include": [
     "nodes/**/*",
-    "credentials/**/*",
+    // "credentials/**/*",  // 不再使用原生凭据系统
     "index.ts"
   ],
   "exclude": [

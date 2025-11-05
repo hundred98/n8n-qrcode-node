@@ -16,13 +16,7 @@ class QRCodeNode {
 				name: 'QR Code'
 			},
 			inputs: ['main'],
-			outputs: ['main'],
-			credentials: [
-				{
-					name: 'qrcodeApi',
-					required: true,
-				},
-			],
+		outputs: ['main'],
 			properties: [
 				{
 					displayName: 'Operation',
@@ -40,9 +34,9 @@ class QRCodeNode {
 							description: 'Read and decode QR code from image'
 						},
 						{
-							name: 'Manage Credentials',
-							value: 'credentials',
-							description: 'Manage QR code credentials'
+							name: 'App Secrets Guide',
+							value: 'appSecrets',
+							description: 'Guide for storing application secrets in n8n data table'
 						}
 					],
 					default: 'generate',
@@ -158,10 +152,10 @@ class QRCodeNode {
 					},
 					description: 'Format of the input image'
 				},
-				// Manage Credentials 参数
+				// App Secrets Management 参数
 				{
-					displayName: 'Credential Action',
-					name: 'credAction',
+					displayName: 'App Secret Action',
+					name: 'secretAction',
 					type: 'options',
 					options: [
 						{ name: 'Create', value: 'create' },
@@ -171,29 +165,29 @@ class QRCodeNode {
 					default: 'list',
 					displayOptions: {
 						show: {
-							operation: ['credentials']
+							operation: ['appSecrets']
 						}
 					},
-					description: 'Action to perform on credentials'
+					description: 'Action to perform on application secrets'
 				},
 				{
-					displayName: 'Credential Name',
-					name: 'credName',
+					displayName: 'App Secret Name',
+					name: 'secretName',
 					type: 'string',
 					default: '',
 					displayOptions: {
 						hide: {
-							credAction: ['list']
+							secretAction: ['list']
 						},
 						show: {
-							operation: ['credentials']
+							operation: ['appSecrets']
 						}
 					},
-					description: 'Name of the credential'
+					description: 'Name of the application secret'
 				},
 				{
-					displayName: 'Credential Value',
-					name: 'credValue',
+					displayName: 'App Secret Value',
+					name: 'secretValue',
 					type: 'string',
 					typeOptions: {
 						password: true
@@ -201,13 +195,13 @@ class QRCodeNode {
 					default: '',
 					displayOptions: {
 						hide: {
-							credAction: ['list', 'delete']
+							secretAction: ['list', 'delete']
 						},
 						show: {
-							operation: ['credentials']
+							operation: ['appSecrets']
 						}
 					},
-					description: 'Value of the credential'
+					description: 'Value of the application secret'
 				},
 				{
 					displayName: 'Data Table ID',
@@ -216,10 +210,10 @@ class QRCodeNode {
 					default: '',
 					displayOptions: {
 						show: {
-							operation: ['credentials']
+							operation: ['appSecrets']
 						}
 					},
-					description: 'ID of the n8n data table to use for credential storage'
+					description: 'ID of the n8n data table to use for application secret storage'
 				}
 			]
 		};
@@ -228,9 +222,6 @@ class QRCodeNode {
 	async execute() {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0);
-		
-		// 获取凭证信息
-		const credentials = await this.getCredentials('qrcodeApi');
 		
 		const returnItems = [];
 		
@@ -324,26 +315,26 @@ class QRCodeNode {
 				} catch (error) {
 					throw new Error(`Failed to read QR code: ${error.message}`);
 				}
-			} else if (operation === 'credentials') {
+			} else if (operation === 'appSecrets') {
 				// 准备与n8n data table集成
 				// 这里需要通过HTTP请求与data table API交互
-				const credAction = this.getNodeParameter('credAction', i);
+				const secretAction = this.getNodeParameter('secretAction', i);
 				const dataTableId = this.getNodeParameter('dataTableId', i);
 				
 				if (!dataTableId) {
-					throw new Error('Data Table ID is required for credential management');
+					throw new Error('Data Table ID is required for application secret management');
 				}
 				
 				// 提供与data table集成的指引信息
 				returnItems.push({
 					json: {
-						action: credAction,
+						action: secretAction,
 						dataTableId: dataTableId,
-						message: `To manage credentials, connect this node to an HTTP Request node configured to interact with n8n data table API.`,
+						message: `To manage application secrets, connect this node to an HTTP Request node configured to interact with n8n data table API.`,
 						instructions: {
-							create: "Use POST request to data table API with credential name and value",
-							delete: "Use DELETE request to data table API with credential name",
-							list: "Use GET request to data table API to retrieve all credentials"
+							create: "Use POST request to data table API with app secret name and value",
+							delete: "Use DELETE request to data table API with app secret name",
+							list: "Use GET request to data table API to retrieve all app secrets"
 						},
 						timestamp: new Date().toISOString()
 					}

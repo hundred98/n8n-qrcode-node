@@ -1,13 +1,8 @@
-import { QRCodeGenerator } from './nodes/QRCodeGenerator/QRCodeGenerator';
-import { QRCodeReader } from './nodes/QRCodeReader/QRCodeReader';
-import { QRCodeCredentialManager } from './nodes/QRCodeCredentialManager/QRCodeCredentialManager';
-import { QRCodeGroup } from './nodes/QRCodeGroup/QRCodeGroup';
+// 使用require方式导入以避免TypeScript类型检查错误
+const { QRCode } = require('./nodes/QRCode/QRCode.node.js');
 
-export { QRCodeGenerator, QRCodeReader, QRCodeCredentialManager, QRCodeGroup };
+export { QRCode };
 
 export const nodes = [
-  QRCodeGenerator,
-  QRCodeReader,
-  QRCodeCredentialManager,
-  QRCodeGroup,
+  QRCode,
 ];
