@@ -19,17 +19,6 @@ class QRCodeNode {
 			},
 			inputs: ['main'],
 			outputs: ['main'],
-			// 凭证定义，只在appSecrets操作时显示
-			credentials: [
-				{
-					name: 'n8nApi',
-					displayOptions: {
-						show: {
-							operation: ['appSecrets']
-						}
-					}
-				}
-			],
 			properties: [
 				{
 					displayName: 'Operation',
@@ -206,38 +195,6 @@ class QRCodeNode {
 				},
 				// App Secrets Management Parameters
 				{
-					displayName: 'Data Table',
-					name: 'dataTableId',
-					type: 'resourceLocator',
-					default: {
-						mode: 'list',
-						value: ''
-					},
-					required: true,
-					displayOptions: {
-						show: {
-							operation: ['appSecrets']
-						}
-					},
-					modes: [
-						{
-							displayName: 'From List',
-							name: 'list',
-							type: 'list',
-							typeOptions: {
-								searchListMethod: 'dataTableSearch',
-								searchable: true
-							}
-						},
-						{
-							displayName: 'By ID',
-							name: 'id',
-							type: 'string'
-						}
-					],
-					description: 'Data table to use for application secret storage'
-				},
-				{
 					displayName: 'Data Source',
 					name: 'dataSource',
 					type: 'options',
@@ -280,6 +237,22 @@ class QRCodeNode {
 						}
 					},
 					description: 'URL of the QR code image containing app secret data'
+				},
+				{
+					displayName: 'Output Format',
+					name: 'outputFormat',
+					type: 'options',
+					options: [
+						{ name: 'Text', value: 'text' },
+						{ name: 'JSON', value: 'json' }
+					],
+					default: 'json',
+					displayOptions: {
+						show: {
+							operation: ['appSecrets']
+						}
+					},
+					description: 'Choose the output format for the secret data'
 				}
 			]
 		};
@@ -293,10 +266,6 @@ class QRCodeNode {
 						{
 							name: 'App Secrets',
 							value: 'app_secrets'
-						},
-						{
-							name: 'Credentials Storage',
-							value: 'credentials_storage'
 						}
 					];
 					
@@ -496,25 +465,8 @@ class QRCodeNode {
 					throw new Error(`Failed to read QR code: ${error.message}`);
 				}
 			} else if (operation === 'appSecrets') {
-				// 准备与n8n data table集成
-				const dataTableId = this.getNodeParameter('dataTableId', i);
 				const dataSource = this.getNodeParameter('dataSource', i);
-				
-				// 尝试获取API Key凭证
-				let credentials;
-				let apiKey;
-				try {
-					credentials = await this.getCredentials('apiKey');
-					if (credentials) {
-						apiKey = credentials.apiKey;
-					}
-				} catch (error) {
-					// 如果没有设置API Key凭证，继续执行但不使用认证
-				}
-				
-				if (!dataTableId) {
-					throw new Error('Data Table ID is required for application secret management');
-				}
+				const outputFormat = this.getNodeParameter('outputFormat', i, 'json');
 				
 				// 根据数据源获取图像数据
 				let imageBuffer = null;
@@ -567,7 +519,7 @@ class QRCodeNode {
 				const code = jsQR(data, info.width, info.height);
 				
 				if (code) {
-					// 解析二维码中的应用秘钥数据
+					// 解析二维码中的应用密钥数据
 					let secretData;
 					try {
 						secretData = JSON.parse(code.data);
@@ -577,24 +529,28 @@ class QRCodeNode {
 					
 					// 验证必需的字段
 					if (!secretData.type || secretData.type !== 'n8n-app-secret') {
-						throw new Error('QR code does not contain valid n8n app secret data');
+						throw new Error('QR code does not contain valid n8n app secret data: invalid type');
 					}
 					
 					if (!secretData.appName || !secretData.secretName || !secretData.secretValue) {
-						throw new Error('QR code missing required app secret fields');
+						throw new Error('QR code missing required app secret fields: appName, secretName, or secretValue');
 					}
 					
-					// 返回解析的应用秘钥信息
-					returnItems.push({
-						json: {
-							action: 'create',
-							appName: secretData.appName,
-							secretName: secretData.secretName,
-							secretData: secretData,
-							note: '通过n8n data table API存储应用秘钥',
-							credentials: credentials ? 'API Key认证已配置' : '未配置API Key认证'
-						}
-					});
+					// 根据输出格式返回数据
+					if (outputFormat === 'text') {
+						returnItems.push({
+							json: {
+								appName: secretData.appName,
+								secretName: secretData.secretName,
+								secretValue: secretData.secretValue
+							}
+						});
+					} else {
+						// JSON format
+						returnItems.push({
+							json: secretData
+						});
+					}
 				} else {
 					throw new Error('No QR code found in image');
 				}

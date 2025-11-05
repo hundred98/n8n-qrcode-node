@@ -79,14 +79,17 @@ npm install /path/to/n8n-nodes-qrcode
 
 **输入参数**：一张二维码图片，包含以下内容：
 - **type**: 固定为 "n8n-app-secret"，标识这是应用秘钥二维码，必填
-- **version**: 格式版本号，当前为 "1.0"，必填
 - **appName**: 应用名称，必填
 - **secretName**: 秘钥名称，必填，用于标识具体的秘钥
-- **secretType**: 秘钥类型，必填（API_KEY/ACCESS_TOKEN/CREDENTIAL等）
 - **secretValue**: 秘钥实际值，必填
-- **secretVersion**: 秘钥版本号，用于版本控制
-- **timestamp**: 时间戳（毫秒），用于验证二维码的时效性
-- **nonce**: 随机字符串，用于防止重放攻击
+
+例如输入的二维码是Text内容如下：
+{
+  "type": "n8n-app-secret",
+  "appName": "My Test App",
+  "secretName": "API Key",
+  "secretValue": "sk-1234567890abcdef"
+}
 
 **输出**：操作结果的JSON对象
 
@@ -95,8 +98,6 @@ npm install /path/to/n8n-nodes-qrcode
 - appName (字符串) - 应用名称
 - secretName (字符串) - 秘钥名称
 - secretValue (字符串) - 应用秘钥的实际值
-- secretType (字符串) - 秘钥类型
-- version (字符串) - 秘钥版本号
 - createdAt (日期时间) - 秘钥创建时间
 - updatedAt (日期时间) - 秘钥最后更新时间
 
@@ -105,6 +106,7 @@ npm install /path/to/n8n-nodes-qrcode
 - **数据验证**：检查解析后的数据是否符合预期格式
 - **二维码有效性检查**：验证生成的二维码是否可被正确扫描
 - **二维码对比**：比较两个二维码是否包含相同内容
+- **版本和类型管理**：秘钥版本和类型（API_KEY/ACCESS_TOKEN/CREDENTIAL等）存储与管理
 
 ## 使用场景示例
 
