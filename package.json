@@ -32,19 +32,14 @@
     "test": "echo 'Running tests...'"
   },
   "n8n": {
-    "n8nNodesApiVersion": 2,
-    "nodes": [
-      "dist/nodes/QRCode/QRCode.node.js"
-    ]
+    "n8nNodesApiVersion": 2
   },
   "devDependencies": {
-    "@types/node": "^24.10.0",
     "n8n-workflow": "^1.29.0"
   },
   "dependencies": {
-    "jsqr": "^1.4.0",
-    "node-fetch": "^3.3.2",
     "qrcode": "^1.5.1",
-    "sharp": "^0.34.4"
+    "jsqr": "^1.4.0",
+    "sharp": "^0.32.0"
   }
 }

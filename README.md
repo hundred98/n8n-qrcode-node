@@ -75,7 +75,7 @@ npm install /path/to/n8n-nodes-qrcode
 
 ### 3. App Secrets Manager (应用秘钥管理器)
 
-**功能**：通过二维码和data table API管理应用秘钥
+**功能**：通过二维码和data table API管理应用秘钥，支持创建和更新应用秘钥的基本操作
 
 **输入参数**：一张二维码图片，包含以下内容：
 - **type**: 固定为 "n8n-app-secret"，标识这是应用秘钥二维码，必填

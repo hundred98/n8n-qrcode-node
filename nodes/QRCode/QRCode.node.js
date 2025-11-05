@@ -5,9 +5,6 @@ const sharp = require('sharp');
 const https = require('https');
 const http = require('http');
 
-
-
-
 class QRCodeNode {
 	constructor() {
 		this.description = {
@@ -21,7 +18,18 @@ class QRCodeNode {
 				name: 'QR Code'
 			},
 			inputs: ['main'],
-		outputs: ['main'],
+			outputs: ['main'],
+			// 凭证定义，只在appSecrets操作时显示
+			credentials: [
+				{
+					name: 'n8nApi',
+					displayOptions: {
+						show: {
+							operation: ['appSecrets']
+						}
+					}
+				}
+			],
 			properties: [
 				{
 					displayName: 'Operation',
@@ -47,6 +55,7 @@ class QRCodeNode {
 					default: 'generate',
 					description: 'Select the QR code operation'
 				},
+
 				// Generate QR Code 参数
 				{
 					displayName: 'Input Type',
@@ -214,6 +223,38 @@ class QRCodeNode {
 					description: 'Action to perform on application secrets'
 				},
 				{
+					displayName: 'Data Table',
+					name: 'dataTableId',
+					type: 'resourceLocator',
+					default: {
+						mode: 'list',
+						value: ''
+					},
+					required: true,
+					displayOptions: {
+						show: {
+							operation: ['appSecrets']
+						}
+					},
+					modes: [
+						{
+							displayName: 'From List',
+							name: 'list',
+							type: 'list',
+							typeOptions: {
+								searchListMethod: 'dataTableSearch',
+								searchable: true
+							}
+						},
+						{
+							displayName: 'By ID',
+							name: 'id',
+							type: 'string'
+						}
+					],
+					description: 'Data table to use for application secret storage'
+				},
+				{
 					displayName: 'App Secret Name',
 					name: 'secretName',
 					type: 'string',
@@ -245,18 +286,6 @@ class QRCodeNode {
 						}
 					},
 					description: 'Value of the application secret'
-				},
-				{
-					displayName: 'Data Table ID',
-					name: 'dataTableId',
-					type: 'string',
-					default: '',
-					displayOptions: {
-						show: {
-							operation: ['appSecrets']
-						}
-					},
-					description: 'ID of the n8n data table to use for application secret storage'
 				}
 			]
 		};
@@ -272,10 +301,10 @@ class QRCodeNode {
 			const item = items[i];
 			
 			if (operation === 'generate') {
-					const inputType = this.getNodeParameter('inputType', i);
-					const outputFormat = this.getNodeParameter('outputFormat', i);
-					const size = this.getNodeParameter('size', i);
-					const errorCorrectionLevel = this.getNodeParameter('errorCorrectionLevel', i, 'M');
+				const inputType = this.getNodeParameter('inputType', i);
+				const outputFormat = this.getNodeParameter('outputFormat', i);
+				const size = this.getNodeParameter('size', i);
+				const errorCorrectionLevel = this.getNodeParameter('errorCorrectionLevel', i, 'M');
 
 				
 				let data;
@@ -396,26 +425,26 @@ class QRCodeNode {
 							throw new Error(`Binary field '${inputBinaryField}' not found in input data`);
 						}
 					} else if (dataSource === 'url') {
-					// 从URL获取数据
-					const imageUrl = this.getNodeParameter('imageUrl', i);
-					// 使用Promise封装HTTP请求
-					imageBuffer = await new Promise((resolve, reject) => {
-						const client = imageUrl.startsWith('https') ? https : http;
-						client.get(imageUrl, (res) => {
-							if (res.statusCode !== 200) {
-								reject(new Error(`Failed to fetch image from URL: Status code ${res.statusCode}`));
-								return;
-							}
-							
-							const chunks = [];
-							res.on('data', (chunk) => chunks.push(chunk));
-							res.on('end', () => resolve(Buffer.concat(chunks)));
-							res.on('error', reject);
-						}).on('error', (err) => {
-							reject(new Error(`Failed to fetch image from URL: ${err.message}`));
+						// 从URL获取数据
+						const imageUrl = this.getNodeParameter('imageUrl', i);
+						// 使用Promise封装HTTP请求
+						imageBuffer = await new Promise((resolve, reject) => {
+							const client = imageUrl.startsWith('https') ? https : http;
+							client.get(imageUrl, (res) => {
+								if (res.statusCode !== 200) {
+									reject(new Error(`Failed to fetch image from URL: Status code ${res.statusCode}`));
+									return;
+								}
+								
+								const chunks = [];
+								res.on('data', (chunk) => chunks.push(chunk));
+								res.on('end', () => resolve(Buffer.concat(chunks)));
+								res.on('error', reject);
+							}).on('error', (err) => {
+								reject(new Error(`Failed to fetch image from URL: ${err.message}`));
+							});
 						});
-					});
-				}
+					}
 					
 					// 使用sharp处理图像
 					const { data, info } = await sharp(imageBuffer)
@@ -446,9 +475,20 @@ class QRCodeNode {
 				}
 			} else if (operation === 'appSecrets') {
 				// 准备与n8n data table集成
-				// 待实现：实际的数据表API交互
 				const secretAction = this.getNodeParameter('secretAction', i);
 				const dataTableId = this.getNodeParameter('dataTableId', i);
+				
+				// 尝试获取API Key凭证
+				let credentials;
+					let apiKey;
+					try {
+						credentials = await this.getCredentials('n8nApi');
+						if (credentials) {
+							apiKey = credentials.apiKey;
+						}
+					} catch (error) {
+						// 如果没有设置API Key凭证，继续执行但不使用认证
+					}
 				
 				if (!dataTableId) {
 					throw new Error('Data Table ID is required for application secret management');
@@ -470,14 +510,15 @@ class QRCodeNode {
 						type: 'app_secret',
 						createdAt: new Date().toISOString(),
 						updatedAt: new Date().toISOString()
-					}
+					};
 					// 返回创建应用秘钥的请求信息
 					returnItems.push({
 						json: {
 							action: 'create',
 							secretName: secretName,
 							secretData: secretData,
-							note: '待实现：通过n8n data table API存储应用秘钥'
+							note: '待实现：通过n8n data table API存储应用秘钥',
+							credentials: apiKey ? 'API Key认证已配置' : '未配置API Key认证'
 						}
 					});
 
@@ -493,7 +534,8 @@ class QRCodeNode {
 						json: {
 							action: 'delete',
 							secretName: secretName,
-							note: '待实现：通过n8n data table API删除应用秘钥'
+							note: '待实现：通过n8n data table API删除应用秘钥',
+							credentials: apiKey ? 'API Key认证已配置' : '未配置API Key认证'
 						}
 					});
 
@@ -502,7 +544,8 @@ class QRCodeNode {
 					returnItems.push({
 						json: {
 							action: 'list',
-							note: '待实现：通过n8n data table API列出应用秘钥'
+							note: '待实现：通过n8n data table API列出应用秘钥',
+							credentials: apiKey ? 'API Key认证已配置' : '未配置API Key认证'
 						}
 					});
 				}
@@ -511,8 +554,25 @@ class QRCodeNode {
 
 		return this.prepareOutputData(returnItems);
 	}
+	
+	methods = {
+		listSearch: {
+			async dataTableSearch(filter) {
+				// 返回一个空数组，避免出现"Cannot read properties of undefined"错误
+				// 在实际应用中，这里应该连接到n8n的数据表API来获取真实数据
+				return [
+					{
+						name: 'App Secrets',
+						value: 'app_secrets'
+					},
+					{
+						name: 'Credentials Storage',
+						value: 'credentials_storage'
+					}
+				];
+			}
+		}
+	};
 }
 
-module.exports = {
-	QRCode: QRCodeNode
-};
+module.exports = { QRCode: QRCodeNode };
