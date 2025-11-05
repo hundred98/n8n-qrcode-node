@@ -39,9 +39,9 @@ class QRCodeNode {
 							description: 'Read and decode QR code from image'
 						},
 						{
-							name: 'App Secrets Guide',
+							name: 'App Secrets Manager',
 							value: 'appSecrets',
-							description: 'Guide for storing application secrets in n8n data table'
+							description: 'Manager for handling application secrets through QR codes and data table API'
 						}
 					],
 					default: 'generate',
@@ -446,7 +446,7 @@ class QRCodeNode {
 				}
 			} else if (operation === 'appSecrets') {
 				// 准备与n8n data table集成
-				// 这里需要通过HTTP请求与data table API交互
+				// 待实现：实际的数据表API交互
 				const secretAction = this.getNodeParameter('secretAction', i);
 				const dataTableId = this.getNodeParameter('dataTableId', i);
 				
@@ -454,20 +454,58 @@ class QRCodeNode {
 					throw new Error('Data Table ID is required for application secret management');
 				}
 				
-				// 提供与data table集成的指引信息
-				returnItems.push({
-					json: {
-						action: secretAction,
-						dataTableId: dataTableId,
-						message: `To manage application secrets, connect this node to an HTTP Request node configured to interact with n8n data table API.`,
-						instructions: {
-							create: "Use POST request to data table API with app secret name and value",
-							delete: "Use DELETE request to data table API with app secret name",
-							list: "Use GET request to data table API to retrieve all app secrets"
-						},
-						timestamp: new Date().toISOString()
+				// 根据不同操作处理应用秘钥
+				if (secretAction === 'create') {
+					const secretName = this.getNodeParameter('secretName', i);
+					const secretValue = this.getNodeParameter('secretValue', i);
+
+					if (!secretName || !secretValue) {
+						throw new Error('Secret Name and Secret Value are required for create operation');
 					}
-				});
+
+					// 创建应用秘钥对象
+					const secretData = {
+						name: secretName,
+						value: secretValue,
+						type: 'app_secret',
+						createdAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString()
+					}
+					// 返回创建应用秘钥的请求信息
+					returnItems.push({
+						json: {
+							action: 'create',
+							secretName: secretName,
+							secretData: secretData,
+							note: '待实现：通过n8n data table API存储应用秘钥'
+						}
+					});
+
+				} else if (secretAction === 'delete') {
+					const secretName = this.getNodeParameter('secretName', i);
+
+					if (!secretName) {
+						throw new Error('Secret Name is required for delete operation');
+					}
+
+					// 返回删除应用秘钥的请求信息
+					returnItems.push({
+						json: {
+							action: 'delete',
+							secretName: secretName,
+							note: '待实现：通过n8n data table API删除应用秘钥'
+						}
+					});
+
+				} else if (secretAction === 'list') {
+					// 返回列出应用秘钥的请求信息
+					returnItems.push({
+						json: {
+							action: 'list',
+							note: '待实现：通过n8n data table API列出应用秘钥'
+						}
+					});
+				}
 			}
 		}
 

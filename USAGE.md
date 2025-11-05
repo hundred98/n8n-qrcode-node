@@ -60,7 +60,7 @@
 - `location`: 二维码在图像中的位置
 - `timestamp`: 解析时间
 
-## 3. 应用秘钥指南功能
+## 3. 应用秘钥管理器功能
 
 ### 功能概述
 提供与n8n data table API集成的指引，用于存储和管理应用秘钥信息。
@@ -109,8 +109,25 @@
 包含应用秘钥信息的二维码应遵循以下格式：
 
 ```
-n8n-app-secret:{"type":"n8n-app-secret","version":"1.0","secretName":"myApiSecret","secretType":"apiKey","data":{"apiKey":"..."},"timestamp":1623456789000,"nonce":"random-string"}
+n8n-app-secret:{"type":"n8n-app-secret","version":"1.0","appName":"应用名称","secretName":"秘钥名称","secretType":"秘钥类型","secretValue":"秘钥值","version":"秘钥版本","timestamp":1623456789000,"nonce":"随机字符串"}
 ```
+
+**字段说明：**
+- **type**: 固定为 "n8n-app-secret"，标识这是应用秘钥二维码
+- **version**: 格式版本号，当前为 "1.0"
+- **appName**: 应用名称，必填
+- **secretName**: 秘钥名称，必填，用于标识具体的秘钥
+- **secretType**: 秘钥类型，必填（API_KEY/ACCESS_TOKEN/CREDENTIAL等）
+- **secretValue**: 秘钥实际值，必填
+- **secretVersion**: 秘钥版本号，用于版本控制
+- **timestamp**: 时间戳（毫秒），用于验证二维码的时效性
+- **nonce**: 随机字符串，用于防止重放攻击
+
+**节点处理逻辑：**
+节点将根据以下规则自动判断操作类型：
+1. 检查data table中是否存在具有相同**appName**、**secretName**、**secretType**和**version**的记录
+2. 如果存在相同记录，则执行更新操作，更新secretValue和updatedAt字段
+3. 如果不存在相同记录，则执行创建操作，添加一条新记录
 
 ## 安全最佳实践
 
