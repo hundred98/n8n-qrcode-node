@@ -1,24 +1,24 @@
-# n8n QR Code 节点包
+# n8n QR Code Node Package
 
-## 功能概述
+## Function Overview
 
-这是一个n8n社区节点包，提供完整的二维码生成和解析功能。包含三个主要节点：
+This is an n8n community node package that provides complete QR code generation and parsing functionality. It includes three main nodes:
 
-- **QR Code Generator** - 二维码生成器
-- **QR Code Reader** - 二维码读取器  
-- **App Secrets Manager** - 应用秘钥管理器
+- **QR Code Generator** - QR code generator
+- **QR Code Reader** - QR code reader  
+- **QR Code Data Bridge** - QR code data bridge
 
-## 安装说明
+## Installation Instructions
 
-### 方法一：使用N8N_CUSTOM_EXTENSIONS环境变量
+### Method 1: Using N8N_CUSTOM_EXTENSIONS Environment Variable
 
-1. 确保项目已安装依赖：
+1. Make sure project dependencies are installed:
 ```bash
 cd n8n-nodes-qrcode
 npm install
 ```
 
-2. 启动n8n时设置环境变量：
+2. Set environment variable when starting n8n:
 ```bash
 # Windows PowerShell
 $env:N8N_CUSTOM_EXTENSIONS="/path/to/n8n-nodes-qrcode"; n8n start
@@ -27,99 +27,186 @@ $env:N8N_CUSTOM_EXTENSIONS="/path/to/n8n-nodes-qrcode"; n8n start
 N8N_CUSTOM_EXTENSIONS="/path/to/n8n-nodes-qrcode" n8n start
 ```
 
-### 方法二：直接安装到n8n
+### Method 2: Install directly into n8n
 
 ```bash
-# 在n8n项目目录中
+# In the n8n project directory
 cd /path/to/n8n
 npm install /path/to/n8n-nodes-qrcode
 ```
 
-## 节点功能详情
+## Node Function Details
 
-### 1. QR Code Generator (二维码生成器)
+### 1. QR Code Generator
 
-**功能**：将文本、JSON数据转换为二维码
+**Function**: Convert text and JSON data into QR codes
 
-**输入参数**：
-- **Input Type**：输入类型（Text 或 JSON）
-- **Text**：当Input Type为Text时，要编码的文本内容
-- **JSON Data**：当Input Type为JSON时，要编码的JSON数据
-- **Output Format**：输出格式（PNG、JPG或SVG）
-- **Size**：二维码尺寸（32-2048像素）
-- **Error Correction Level**：错误纠正级别（L-低7%、M-中15%、Q-较高25%、H-高30%）
+**Input Parameters**:
+- **Input Type**: Input type (Text or JSON)
+- **Text**: Text content to encode when Input Type is Text
+- **JSON Data**: JSON data to encode when Input Type is JSON
+- **Output Format**: Output format (PNG, JPG or SVG)
+- **Size**: QR code size (32-2048 pixels)
+- **Error Correction Level**: Error correction level (L-Low 7%, M-Medium 15%, Q-Quartile 25%, H-High 30%)
 
-**输出**：包含二维码数据的JSON对象和对应的二进制图像数据
+**Output**: JSON object containing QR code data and corresponding binary image data
 
-#### 二期及以后功能（尚未实现）
-- **颜色定制**：前景色和背景色设置
-- **边距调整**：设置二维码四周空白区域大小
-- **Logo嵌入**：在二维码中心添加品牌Logo或图像
-- **二维码样式**：圆形图案点、方形图案点、自定义角标样式
-- **图片质量设置**：控制输出图片的压缩质量
+#### Phase 2 and Later Features (Not Yet Implemented)
+- **Color Customization**: Foreground and background color settings
+- **Margin Adjustment**: Set the size of the blank area around the QR code
+- **Logo Embedding**: Add brand logo or image in the center of the QR code
+- **QR Code Style**: Circular dot patterns, square dot patterns, custom corner styles
+- **Image Quality Settings**: Control output image compression quality
 
-### 2. QR Code Reader (二维码读取器)
+### 2. QR Code Reader
 
-**功能**：从图像中读取和解析二维码内容
+**Function**: Read and parse QR code content from images
 
-**输入参数**：
-- **Data Source**：数据源类型（Binary Field 或 URL）
-- **Input Binary Field Name**：当Data Source为Binary Field时，包含输入图像的二进制字段名称
-- **Image URL**：当Data Source为URL时，包含二维码的图像URL
+**Input Parameters**:
+- **Data Source**: Data source type (Binary Field or URL)
+- **Input Binary Field Name**: Binary field name containing input image when Data Source is Binary Field
+- **Image URL**: Image URL containing QR code when Data Source is URL
 
-**输出**：包含解析结果的JSON对象，包含success状态和data字段（如果解析成功）或error字段（如果解析失败）
+**Output**: JSON object containing parsing results, including success status and data field (if parsing is successful) or error field (if parsing fails)
 
-#### 二期及以后功能（尚未实现）
-- **批量处理**：一次处理包含多个二维码的图片
-- **内容类型识别**：自动识别二维码中的数据类型（URL、文本、联系人信息等）
+#### Phase 2 and Later Features (Not Yet Implemented)
+- **Batch Processing**: Process images containing multiple QR codes at once
+- **Content Type Recognition**: Automatically identify data types in QR codes (URL, text, contact information, etc.)
 
-### 3. App Secrets Manager (应用秘钥管理器)
+### 3. QR Code Data Bridge
 
-**功能**：通过二维码和data table API管理应用秘钥，支持创建和更新应用秘钥的基本操作
+**Function**: Transfer arbitrary data through QR codes
 
-**输入参数**：一张二维码图片，包含以下内容：
-- **type**: 固定为 "n8n-app-secret"，标识这是应用秘钥二维码，必填
-- **appName**: 应用名称，必填
-- **secretName**: 秘钥名称，必填，用于标识具体的秘钥
-- **secretValue**: 秘钥实际值，必填
+**Input Parameters**: A QR code image containing the following content:
+- **qrKey**: Data filled in by the user in the node. Data is only output when it matches the node's data, required
+- Other data, valid key-value pairs for transmission. Keys and values can be customized, for example:
+  "myName": "My Name",
+  "myEmail": "my@email.com",
+  "myPhone": "1234567890",
+  "myAddress": "123 Main St, Anytown, CA 12345",
+  "myWebsite": "https://www.example.com"
 
-例如输入的二维码是Text内容如下：
+Example QR code text content:
+```json
 {
-  "type": "n8n-app-secret",
-  "appName": "My Test App",
-  "secretName": "API Key",
-  "secretValue": "sk-1234567890abcdef"
+  "qrKey": "*********",
+  "myName": "My Name",
+  "myEmail": "my@email.com",
+  "myPhone": "1234567890",
+  "myAddress": "123 Main St, Anytown, CA 12345",
+  "myWebsite": "https://www.example.com"
 }
+```
 
-**输出**：操作结果的JSON对象
+**Output**: Operation result success and JSON object of key-value pairs
 
-其中Data Table表单的字段要求如下：
-- id (字符串) - 应用秘钥的唯一标识符
-- appName (字符串) - 应用名称
-- secretName (字符串) - 秘钥名称
-- secretValue (字符串) - 应用秘钥的实际值
-- createdAt (日期时间) - 秘钥创建时间
-- updatedAt (日期时间) - 秘钥最后更新时间
+#### Phase 2 and Later Features (Not Yet Implemented)
+- **Content Encryption/Decryption**: Encrypt QR code content
+- **Data Validation**: Check if parsed data conforms to expected format
+- **QR Code Validity Check**: Verify that generated QR codes can be correctly scanned
+- **QR Code Comparison**: Compare whether two QR codes contain the same content
+- **Version and Type Management**: Storage and management of key versions and types (API_KEY/ACCESS_TOKEN/CREDENTIAL, etc.)
 
-#### 二期及以后功能（尚未实现）
-- **内容加密/解密**：对二维码内容进行加密处理
-- **数据验证**：检查解析后的数据是否符合预期格式
-- **二维码有效性检查**：验证生成的二维码是否可被正确扫描
-- **二维码对比**：比较两个二维码是否包含相同内容
-- **版本和类型管理**：秘钥版本和类型（API_KEY/ACCESS_TOKEN/CREDENTIAL等）存储与管理
+## Usage Scenario Examples
 
-## 使用场景示例
+### Scenario 1: Secure API Key Transmission
 
-1. **营销自动化**：生成包含不同追踪参数的URL二维码
-2. **数据共享**：将复杂数据编码为二维码以便快速传输
-3. **工作流集成**：在自动化工作流中生成或解析二维码
-4. **身份验证**：生成包含临时令牌的安全二维码
-5. **信息采集**：扫描并解析包含结构化数据的二维码
-6. **应用秘钥管理**：App Secrets Manager可作为QRCode节点的一个操作选项，用于通过n8n data table API管理应用秘钥，支持创建和更新应用秘钥的基本操作，确保应用秘钥的安全管理。
+Enterprise IT administrators need to securely distribute API keys to development team members:
 
-## 后续扩展可能性
+1. Administrators use the QR Code Generator node to generate QR codes containing API keys:
+   ```json
+   {
+     "qrKey": "admin2023",
+     "apiKey": "sk-xxxxxxxxxxxxxxx",
+     "service": "cloud-storage",
+     "permissions": "read-write",
+     "expiry": "2023-12-31"
+   }
+   ```
 
-1. **动态二维码**：支持生成指向可更新内容的二维码
-2. **二维码美化**：提供更多的设计选项和自定义样式
-3. **数据分析**：添加扫描统计和分析功能（需外部服务）
-4. **其他码制支持**：扩展支持条形码等其他码制
+2. Developers use the QR Code Data Bridge node to read the QR code and enter the same qrKey in the node for verification:
+   - API keys are only output when qrKey matches
+   - Provides an additional security layer to prevent unauthorized access
+
+### Scenario 2: Employee Information Entry
+
+HR departments need to quickly enter new employee information into the system:
+
+1. HR uses QR Code Generator to generate QR codes containing basic employee information:
+   ```json
+   {
+     "employeeId": "EMP001234",
+     "name": "Zhang San",
+     "department": "Technology Department",
+     "position": "Frontend Engineer",
+     "email": "zhangsan@company.com",
+     "startDate": "2023-06-01"
+   }
+   ```
+
+2. IT department uses QR Code Reader node to scan the QR code and automatically populate employee system account information
+
+### Scenario 3: Device Configuration Deployment
+
+Operations teams need to deploy network configurations to multiple devices:
+
+1. Operations engineers use QR Code Generator to create QR codes containing network configurations:
+   ```json
+   {
+     "network": {
+       "ssid": "CompanyWiFi",
+       "password": "securePassword123",
+       "security": "WPA2",
+       "ipRange": "192.168.1.100-200"
+     },
+     "dns": ["8.8.8.8", "8.8.4.4"]
+   }
+   ```
+
+2. Field technicians scan the QR code using mobile phones or tablets to obtain configuration information and apply it to devices
+
+### Scenario 4: Meeting Information Sharing
+
+Administrative staff need to share meeting room booking information:
+
+1. Administrative staff use QR Code Generator to generate meeting information QR codes:
+   ```json
+   {
+     "room": "Meeting Room A",
+     "date": "2023-06-15",
+     "time": "14:00-16:00",
+     "topic": "Quarterly Business Review",
+     "participants": ["Zhang San", "Li Si", "Wang Wu"],
+     "materials": "https://drive.company.com/meeting-docs"
+   }
+   ```
+
+2. Meeting participants scan the QR code to obtain complete meeting information
+
+### Scenario 5: Product Traceability Tracking
+
+Manufacturing companies need to track product supply chain information:
+
+1. Production department uses QR Code Generator to generate traceability QR codes for each batch of products:
+   ```json
+   {
+     "batchId": "BATCH20230601A",
+     "productName": "Smart Watch",
+     "productionDate": "2023-06-01",
+     "components": {
+       "screen": "OLED-2023",
+       "battery": "Li-Ion-3000mAh",
+       "processor": "Snapdragon-888"
+     },
+     "qualityCert": "ISO9001-2023"
+   }
+   ```
+
+2. Quality inspection, logistics, and sales departments obtain complete product information by scanning QR codes
+
+## Future Expansion Possibilities
+
+1. **Dynamic QR Codes**: Support generating QR codes pointing to updatable content
+2. **QR Code Beautification**: Provide more design options and custom styles
+3. **Data Analysis**: Add scanning statistics and analysis functions (requires external services)
+4. **Other Code Support**: Expand support for other codes such as barcodes

@@ -36,9 +36,9 @@ class QRCodeNode {
 							description: 'Read and decode QR code from image'
 						},
 						{
-							name: 'App Secrets Manager',
-							value: 'appSecrets',
-							description: 'Manager for handling application secrets through QR codes and data table API'
+							name: 'QR Code Data Bridge',
+							value: 'dataBridge',
+							description: 'Bridge for transferring data through QR codes'
 						}
 					],
 					default: 'generate',
@@ -205,10 +205,10 @@ class QRCodeNode {
 					default: 'binaryField',
 					displayOptions: {
 						show: {
-							operation: ['appSecrets']
+							operation: ['dataBridge']
 						}
 					},
-					description: 'Select the source of the QR code image containing app secret data'
+					description: 'Select the source of the QR code image containing data'
 				},
 				{
 					displayName: 'Input Binary Field Name',
@@ -218,11 +218,11 @@ class QRCodeNode {
 					default: 'data',
 					displayOptions: {
 						show: {
-							operation: ['appSecrets'],
+							operation: ['dataBridge'],
 							dataSource: ['binaryField']
 						}
 					},
-					description: 'Name of the binary field containing the QR code image with app secret data'
+					description: 'Name of the binary field containing the QR code image with data'
 				},
 				{
 					displayName: 'Image URL',
@@ -232,11 +232,24 @@ class QRCodeNode {
 					default: '',
 					displayOptions: {
 						show: {
-							operation: ['appSecrets'],
+							operation: ['dataBridge'],
 							dataSource: ['url']
 						}
 					},
-					description: 'URL of the QR code image containing app secret data'
+					description: 'URL of the QR code image containing data'
+				},
+				{
+					displayName: 'QR Key',
+					name: 'qrKey',
+					type: 'string',
+					required: false,
+					default: '',
+					displayOptions: {
+						show: {
+							operation: ['dataBridge']
+						}
+					},
+					description: 'QR key for verification. Data will only be output if this matches the qrKey in the QR code'
 				},
 				{
 					displayName: 'Output Format',
@@ -249,10 +262,10 @@ class QRCodeNode {
 					default: 'json',
 					displayOptions: {
 						show: {
-							operation: ['appSecrets']
+							operation: ['dataBridge']
 						}
 					},
-					description: 'Choose the output format for the secret data'
+					description: 'Choose the output format for the data'
 				}
 			]
 		};
@@ -264,8 +277,8 @@ class QRCodeNode {
 					// 在实际应用中，这里应该连接到n8n的数据表API来获取真实数据
 					const results = [
 						{
-							name: 'App Secrets',
-							value: 'app_secrets'
+							name: 'QR Code Data',
+							value: 'qrcode_data'
 						}
 					];
 					
@@ -464,8 +477,9 @@ class QRCodeNode {
 				} catch (error) {
 					throw new Error(`Failed to read QR code: ${error.message}`);
 				}
-			} else if (operation === 'appSecrets') {
+			} else if (operation === 'dataBridge') {
 				const dataSource = this.getNodeParameter('dataSource', i);
+				const qrKey = this.getNodeParameter('qrKey', i, '');
 				const outputFormat = this.getNodeParameter('outputFormat', i, 'json');
 				
 				// 根据数据源获取图像数据
@@ -519,40 +533,231 @@ class QRCodeNode {
 				const code = jsQR(data, info.width, info.height);
 				
 				if (code) {
-					// 解析二维码中的应用密钥数据
-					let secretData;
+					// 解析二维码中的数据
+					let qrData;
 					try {
-						secretData = JSON.parse(code.data);
+						qrData = JSON.parse(code.data);
 					} catch (parseError) {
-						throw new Error(`Failed to parse QR code data as JSON: ${parseError.message}`);
+						// 如果不是有效的JSON，就当作普通文本处理
+						qrData = {
+							success: true,
+							format: 'text',
+							data: code.data
+						};
+						
+						// 如果设置了qrKey但二维码不是JSON格式，则验证失败
+						if (qrKey) {
+							returnItems.push({
+								json: {
+									success: false,
+									error: 'QR code data is not in JSON format, but qrKey verification is required'
+								}
+							});
+							continue;
+						}
+						
+						returnItems.push({
+							json: qrData
+						});
+						continue;
 					}
 					
-					// 验证必需的字段
-					if (!secretData.type || secretData.type !== 'n8n-app-secret') {
-						throw new Error('QR code does not contain valid n8n app secret data: invalid type');
+					// 验证qrKey字段
+					if (qrKey) {
+						// 如果节点设置了qrKey但二维码中没有qrKey字段，则验证失败
+						if (!qrData.qrKey) {
+							returnItems.push({
+								json: {
+									success: false,
+									error: 'QR code does not contain qrKey field for verification'
+								}
+							});
+							continue;
+						}
+						
+						// 如果qrKey不匹配，则验证失败
+						if (qrData.qrKey !== qrKey) {
+							returnItems.push({
+								json: {
+									success: false,
+									error: 'qrKey verification failed'
+								}
+							});
+							continue;
+						}
 					}
 					
-					if (!secretData.appName || !secretData.secretName || !secretData.secretValue) {
-						throw new Error('QR code missing required app secret fields: appName, secretName, or secretValue');
+					// 删除qrKey字段，不输出到结果中
+					delete qrData.qrKey;
+					
+					// 根据输出格式返回数据
+					if (outputFormat === 'text') {
+						returnItems.push({
+							json: {
+								success: true,
+								format: 'json',
+								data: qrData
+							}
+						});
+					} else {
+						// JSON format
+						returnItems.push({
+							json: {
+								success: true,
+								...qrData
+							}
+						});
+					}
+				} else {
+					throw new Error('No QR code found in image');
+				}
+			} else if (operation === 'appSecrets') {
+				const dataSource = this.getNodeParameter('dataSource', i);
+				const qrKey = this.getNodeParameter('qrKey', i, '');
+				const outputFormat = this.getNodeParameter('outputFormat', i, 'json');
+				
+				// 根据数据源获取图像数据
+				let imageBuffer = null;
+				
+				if (dataSource === 'binaryField') {
+					// 从Binary Field获取数据
+					const inputBinaryField = this.getNodeParameter('inputBinaryField', i);
+					if (item.binary && item.binary[inputBinaryField]) {
+						let base64Data = item.binary[inputBinaryField].data;
+						
+						// 移除可能的数据URI前缀
+						if (base64Data.startsWith('data:image')) {
+							base64Data = base64Data.split(',')[1];
+						}
+						
+						// 将base64转换为buffer
+						imageBuffer = Buffer.from(base64Data, 'base64');
+					} else {
+						throw new Error(`Binary field '${inputBinaryField}' not found in input data`);
+					}
+				} else if (dataSource === 'url') {
+					// 从URL获取数据
+					const imageUrl = this.getNodeParameter('imageUrl', i);
+					// 使用Promise封装HTTP请求
+					imageBuffer = await new Promise((resolve, reject) => {
+						const client = imageUrl.startsWith('https') ? https : http;
+						client.get(imageUrl, (res) => {
+							if (res.statusCode !== 200) {
+								reject(new Error(`Failed to fetch image from URL: Status code ${res.statusCode}`));
+								return;
+							}
+							
+							const chunks = [];
+							res.on('data', (chunk) => chunks.push(chunk));
+							res.on('end', () => resolve(Buffer.concat(chunks)));
+							res.on('error', reject);
+						}).on('error', (err) => {
+							reject(new Error(`Failed to fetch image from URL: ${err.message}`));
+						});
+					});
+				}
+				
+				// 使用sharp处理图像
+				const { data, info } = await sharp(imageBuffer)
+					.raw()
+					.ensureAlpha()
+					.toBuffer({ resolveWithObject: true });
+					
+				// 使用jsQR读取二维码
+				const code = jsQR(data, info.width, info.height);
+				
+				if (code) {
+					// 解析二维码中的数据
+					let qrData;
+					try {
+						qrData = JSON.parse(code.data);
+					} catch (parseError) {
+						// 如果不是有效的JSON
+						if (qrKey) {
+							// 如果设置了qrKey但二维码不是JSON格式，则验证失败
+							returnItems.push({
+								json: {
+									success: false,
+									error: 'QR code data is not in JSON format, but qrKey verification is required',
+									rawData: code.data
+								}
+							});
+							continue;
+						} else {
+							// 如果没有设置qrKey，直接返回原始数据
+							returnItems.push({
+								json: {
+									success: true,
+									format: 'text',
+									data: code.data
+								}
+							});
+							continue;
+						}
+					}
+					
+					// 处理JSON数据
+					if (qrKey) {
+						// 如果节点设置了qrKey
+						if (!qrData.hasOwnProperty('qrKey')) {
+							// 如果二维码中没有qrKey字段，则验证失败
+							returnItems.push({
+								json: {
+									success: false,
+									error: 'QR code does not contain qrKey field for verification',
+									data: qrData
+								}
+							});
+							continue;
+						}
+						
+						// 如果qrKey不匹配，则验证失败
+						if (qrData.qrKey !== qrKey) {
+							returnItems.push({
+								json: {
+									success: false,
+									error: 'qrKey verification failed',
+									expected: qrKey,
+									actual: qrData.qrKey
+								}
+							});
+							continue;
+						}
+						
+						// 验证通过，删除qrKey字段
+						delete qrData.qrKey;
+					} else {
+						// 如果没有设置qrKey，但数据中有qrKey字段，也删除它
+						if (qrData.hasOwnProperty('qrKey')) {
+							delete qrData.qrKey;
+						}
 					}
 					
 					// 根据输出格式返回数据
 					if (outputFormat === 'text') {
 						returnItems.push({
 							json: {
-								appName: secretData.appName,
-								secretName: secretData.secretName,
-								secretValue: secretData.secretValue
+								success: true,
+								format: 'json',
+								data: qrData
 							}
 						});
 					} else {
 						// JSON format
 						returnItems.push({
-							json: secretData
+							json: {
+								success: true,
+								...qrData
+							}
 						});
 					}
 				} else {
-					throw new Error('No QR code found in image');
+					returnItems.push({
+						json: {
+							success: false,
+							error: 'No QR code found in image'
+						}
+					});
 				}
 			}
 		}
