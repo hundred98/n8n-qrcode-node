@@ -32,7 +32,10 @@
     "test": "echo 'Running tests...'"
   },
   "n8n": {
-    "n8nNodesApiVersion": 2
+    "n8nNodesApiVersion": 2,
+    "nodes": [
+      "index.js"
+    ]
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

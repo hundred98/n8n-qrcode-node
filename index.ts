@@ -1,4 +1,4 @@
-// 使用require方式导入以避免TypeScript类型检查错误
+// @ts-ignore
 const { QRCode } = require('./nodes/QRCode/QRCode.node.js');
 
 export { QRCode };

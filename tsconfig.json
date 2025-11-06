@@ -31,7 +31,8 @@
   "include": [
     "nodes/**/*",
     // "credentials/**/*",  // 不再使用原生凭据系统
-    "index.ts"
+    "index.ts",
+    "index.d.ts"
   ],
   "exclude": [
     "node_modules",

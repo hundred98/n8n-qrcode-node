@@ -1,12 +1,13 @@
-const { INodeType, INodeTypeDescription } = require('n8n-workflow');
+const { Node } = require('n8n-workflow');
 const QRCode = require('qrcode');
 const jsQR = require('jsqr');
 const sharp = require('sharp');
 const https = require('https');
 const http = require('http');
 
-class QRCodeNode extends INodeType {
+class QRCodeNode extends Node {
 	constructor() {
+		super();
 		this.description = {
 			displayName: 'QR Code',
 			name: 'qrcode',
@@ -160,7 +161,7 @@ class QRCodeNode extends INodeType {
 					default: 'binaryField',
 					displayOptions: {
 						show: {
-							operation: ['read']
+							operation: ['read', 'dataBridge']
 						}
 					},
 					description: 'Select the source of the QR code image'
@@ -173,11 +174,11 @@ class QRCodeNode extends INodeType {
 					default: 'data',
 					displayOptions: {
 						show: {
-							operation: ['read'],
+							operation: ['read', 'dataBridge'],
 							dataSource: ['binaryField']
 						}
 					},
-					description: 'Name of the binary field containing the input image'
+					description: 'Name of the binary field containing the input image or QR code with data'
 				},
 				{
 					displayName: 'Image URL',
@@ -187,28 +188,11 @@ class QRCodeNode extends INodeType {
 					default: '',
 					displayOptions: {
 						show: {
-							operation: ['read'],
+							operation: ['read', 'dataBridge'],
 							dataSource: ['url']
 						}
 					},
 					description: 'URL of the image containing the QR code'
-				},
-				// App Secrets Management Parameters
-				{
-					displayName: 'Data Source',
-					name: 'dataSource',
-					type: 'options',
-					options: [
-						{ name: 'Binary Field', value: 'binaryField' },
-						{ name: 'URL', value: 'url' }
-					],
-					default: 'binaryField',
-					displayOptions: {
-						show: {
-							operation: ['dataBridge']
-						}
-					},
-					description: 'Select the source of the QR code image containing data'
 				},
 				{
 					displayName: 'Input Binary Field Name',
