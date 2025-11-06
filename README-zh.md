@@ -1,5 +1,5 @@
 # n8n QR Code 节点包
-
+[English Documentation](README.md)
 ## 功能概述
 
 这是一个n8n社区节点包，提供完整的二维码生成和解析功能。包含三个主要节点：

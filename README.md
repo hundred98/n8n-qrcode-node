@@ -1,5 +1,5 @@
 # n8n QR Code Node Package
-
+[中文文档](README-zh.md)
 ## Function Overview
 
 This is an n8n community node package that provides complete QR code generation and parsing functionality. It includes three main nodes:
