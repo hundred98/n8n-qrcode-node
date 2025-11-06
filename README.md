@@ -210,3 +210,22 @@ Manufacturing companies need to track product supply chain information:
 2. **QR Code Beautification**: Provide more design options and custom styles
 3. **Data Analysis**: Add scanning statistics and analysis functions (requires external services)
 4. **Other Code Support**: Expand support for other codes such as barcodes
+
+## Author
+
+- **hundred98** - hundred98@163.com
+
+## Repository
+
+- GitHub: https://github.com/hundred98/n8n-qrcode-node
+
+
+## 📱 WeChat Support
+
+If you have any questions or suggestions, welcome to follow my WeChat official account for technical support:
+
+<div align="center">
+  <img src="./assets/wechat-qr.jpg" alt="WeChat QR Code" width="200"/>
+  <br>
+  <em>Scan to follow WeChat Official Account</em>
+</div>

@@ -1,6 +1,6 @@
 {
-  "name": "n8n-nodes-qrcode",
-  "version": "1.0.0",
+  "name": "n8n-nodes-qrcode-hundred98",
+  "version": "0.1.1",
   "description": "n8n community node for QR code generation and reading",
   "keywords": [
     "n8n-nodes",
@@ -9,14 +9,14 @@
     "n8n"
   ],
   "license": "MIT",
-  "homepage": "",
+  "homepage": "https://github.com/hundred98/n8n-qrcode-node",
   "author": {
-    "name": "Your Name",
-    "email": "your.email@example.com"
+    "name": "hundred98",
+    "email": "hundred98@163.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/n8n-nodes-qrcode.git"
+    "url": "https://github.com/hundred98/n8n-qrcode-node.git"
   },
   "engines": {
     "node": ">=14.0.0"

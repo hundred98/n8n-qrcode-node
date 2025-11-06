@@ -211,3 +211,23 @@ HR部门需要快速将新员工信息录入系统：
 2. **二维码美化**：提供更多的设计选项和自定义样式
 3. **数据分析**：添加扫描统计和分析功能（需外部服务）
 4. **其他码制支持**：扩展支持条形码等其他码制
+
+## 作者
+
+- **hundred98** - hundred98@163.com
+
+## 仓库
+
+- GitHub: https://github.com/hundred98/n8n-qrcode-node
+
+
+### 📱 微信支持
+
+如果您有任何问题或建议，欢迎关注我的微信公众号获取技术支持：
+
+<div align="center">
+  <img src="./assets/wechat-qr.jpg" alt="WeChat QR Code" width="200"/>
+  <br>
+  <em>扫码关注微信公众号</em>
+</div>
+
