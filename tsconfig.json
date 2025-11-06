@@ -25,7 +25,8 @@
     "noImplicitOverride": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
-    "exactOptionalPropertyTypes": true
+    "exactOptionalPropertyTypes": true,
+    "types": ["node"]
   },
   "include": [
     "nodes/**/*",

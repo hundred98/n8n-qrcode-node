@@ -5,7 +5,7 @@ const sharp = require('sharp');
 const https = require('https');
 const http = require('http');
 
-class QRCodeNode {
+class QRCodeNode extends INodeType {
 	constructor() {
 		this.description = {
 			displayName: 'QR Code',
