@@ -21,7 +21,7 @@ class QRCodeNode extends Node {
 			inputs: ['main'],
 			outputs: ['main'],
 			properties: [
-				{
+				{					
 					displayName: 'Operation',
 					name: 'operation',
 					type: 'options',
@@ -166,6 +166,7 @@ class QRCodeNode extends Node {
 					},
 					description: 'Select the source of the QR code image'
 				},
+
 				{
 					displayName: 'Input Binary Field Name',
 					name: 'inputBinaryField',
@@ -175,34 +176,6 @@ class QRCodeNode extends Node {
 					displayOptions: {
 						show: {
 							operation: ['read', 'dataBridge'],
-							dataSource: ['binaryField']
-						}
-					},
-					description: 'Name of the binary field containing the input image or QR code with data'
-				},
-				{
-					displayName: 'Image URL',
-					name: 'imageUrl',
-					type: 'string',
-					required: true,
-					default: '',
-					displayOptions: {
-						show: {
-							operation: ['read', 'dataBridge'],
-							dataSource: ['url']
-						}
-					},
-					description: 'URL of the image containing the QR code'
-				},
-				{
-					displayName: 'Input Binary Field Name',
-					name: 'inputBinaryField',
-					type: 'string',
-					required: true,
-					default: 'data',
-					displayOptions: {
-						show: {
-							operation: ['dataBridge'],
 							dataSource: ['binaryField']
 						}
 					},
@@ -216,12 +189,28 @@ class QRCodeNode extends Node {
 					default: '',
 					displayOptions: {
 						show: {
-							operation: ['dataBridge'],
+							operation: ['read', 'dataBridge'],
 							dataSource: ['url']
 						}
 					},
 					description: 'URL of the QR code image containing data'
 				},
+				{
+					displayName: 'Output Format',
+					name: 'outputFormat',
+					type: 'options',
+					options: [
+						{ name: 'Text', value: 'text' },
+						{ name: 'JSON', value: 'json' }
+					],
+					default: 'json',
+					displayOptions: {
+						show: {
+							operation: ['read']
+						}
+					},
+					description: 'Choose the output format for the data'
+				},				
 				{
 					displayName: 'QR Key',
 					name: 'qrKey',
@@ -391,6 +380,7 @@ class QRCodeNode extends Node {
 				}
 			} else if (operation === 'read') {
 				const dataSource = this.getNodeParameter('dataSource', i);
+				const outputFormat = this.getNodeParameter('outputFormat', i, 'json');
 				
 				try {
 					// 根据数据源获取图像数据
@@ -441,16 +431,48 @@ class QRCodeNode extends Node {
 						.toBuffer({ resolveWithObject: true });
 						
 					// 使用jsQR读取二维码
-					const code = jsQR(data, info.width, info.height);
-					
-					if (code) {
-						returnItems.push({
-							json: {
-								success: true,
-								data: code.data
+						const code = jsQR(data, info.width, info.height);
+						
+						if (code) {
+							// 根据输出格式返回数据
+							if (outputFormat === 'text') {
+								// 尝试将数据解析为JSON对象
+								let parsedData = code.data;
+								try {
+									parsedData = JSON.parse(code.data);
+								} catch (parseError) {
+									// 如果解析失败，保持原始字符串
+								}
+								returnItems.push({
+									json: {
+										success: true,
+										format: 'text',
+										data: parsedData
+									}
+								});
+							} else {
+								// 尝试将数据解析为JSON
+								let parsedData;
+								try {
+									parsedData = JSON.parse(code.data);
+									returnItems.push({
+										json: {
+											success: true,
+											...parsedData
+										}
+									});
+								} catch (parseError) {
+									// 如果不是有效的JSON，则返回文本格式
+									returnItems.push({
+										json: {
+											success: true,
+											format: 'text',
+											data: code.data
+										}
+									});
+								}
 							}
-						});
-					} else {
+						} else {
 						returnItems.push({
 							json: {
 								success: false,
@@ -579,7 +601,7 @@ class QRCodeNode extends Node {
 						returnItems.push({
 							json: {
 								success: true,
-								format: 'json',
+								format: 'text',
 								data: qrData
 							}
 						});
